@@ -16,6 +16,7 @@
 # limitations under the License.                                             #
 #--------------------------------------------------------------------------- #
 
+# Exports the context variables
 export_rc_vars()
 {
     if [ -f $1 ] ; then
@@ -28,35 +29,6 @@ export_rc_vars()
         done
     fi
 }
-
-CONTEXT_VOLUME=$(blkid | grep -F 'LABEL="CONTEXT"' | cut -d: -f1)
-
-if [ -z "$CONTEXT_VOLUME" ]; then
-    exit 0
-fi
-
-################################################################################
-# Context found, this is an OpenNebula VM
-################################################################################
-
-CONTEXT_DIR=/mnt/context
-CONTEXT=$CONTEXT_DIR/context.sh
-
-mkdir -p $CONTEXT_DIR
-if ! mount | grep $CONTEXT_DIR >/dev/null; then
-    mount $CONTEXT_VOLUME $CONTEXT_DIR
-fi
-
-if [ -e "$CONTEXT" ]; then
-    export_rc_vars "$CONTEXT"
-else
-    # Context file not present
-    exit 0
-fi
-
-################################################################################
-# Lib
-################################################################################
 
 # Gets IP address from a given MAC
 mac2ip() {
@@ -166,6 +138,49 @@ get_dev()
 
     echo "$list" | grep "$mac" | cut -d' ' -f1 | tail -n1
 }
+
+################################################################################
+# Mount or Write Context
+################################################################################
+
+CONTEXT_VOLUME=$(blkid -l -t LABEL="CONTEXT" -o device)
+
+if [ -e "$CONTEXT_VOLUME" ]; then
+    # Running under KVM or Xen
+
+    CONTEXT_DIR=/mnt/context
+    CONTEXT=$CONTEXT_DIR/context.sh
+
+    mkdir -p $CONTEXT_DIR
+
+    if ! mount | grep $CONTEXT_DIR >/dev/null; then
+        mount $CONTEXT_VOLUME $CONTEXT_DIR
+    fi
+
+    if [ ! -e "$CONTEXT" ]; then
+        # Context file not present
+        echo "[kvm/xen] Context file not found" >&2
+        exit 1
+    fi
+
+else
+    # Running under vCenter
+
+    CONTEXT="/tmp/context.sh"
+    CONTEXT_64="/tmp/context64.sh"
+
+    vmtoolsd --cmd 'info-get guestinfo.opennebula.context' > $CONTEXT_64
+
+    if [ "$?" != "0" ]; then
+        # Context file not present
+        echo "[vcenter] vmtoolsd command fail" >&2
+        exit 1
+    fi
+
+    openssl base64 -d < $CONTEXT_64 > $CONTEXT
+fi
+
+export_rc_vars "$CONTEXT"
 
 ################################################################################
 # Configure Network
