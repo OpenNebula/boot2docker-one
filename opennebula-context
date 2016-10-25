@@ -245,6 +245,23 @@ then
 fi
 
 ################################################################################
+# HTTP_PROXY
+################################################################################
+
+if test -n "$HTTP_PROXY"
+then
+	echo "Setting up HTTP proxy and restarting docker."
+	echo "HTTP_PROXY='$HTTP_PROXY'; export HTTP_PROXY" >> /var/lib/boot2docker/profile
+
+	# Docker has already been started, restart it.
+	# Sorry, this is quick and dirty way to do it, feel free to split
+	# contextualization to multiple stages, so that we run late enough
+	# to override user password and network setup, and sooner than docker
+	# is started.
+	/etc/init.d/docker restart
+fi
+
+################################################################################
 # RUN SCRIPTS
 ################################################################################
 
