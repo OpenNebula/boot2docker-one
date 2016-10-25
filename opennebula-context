@@ -223,6 +223,28 @@ then
 fi
 
 ################################################################################
+# USER PASSWORD
+################################################################################
+
+echo "Setting up user encrypted password."
+if test -z "$CRYPTED_PASSWORD"
+then
+	# Don't allow the default password at all
+	CRYPTED_PASSWORD='*'
+fi
+
+# Unfortunately, we don't have ed(1) to edit in-place
+# various characters can be in $CRYPTED_PASSWORD, with one
+# exception: a colon is a delimiter in /etc/shadow, so it cannot
+# possibly be included in user's password. Hence the overly-quoted
+# sed expression:
+if sed "s:^root\:[^:]*\::root\:$CRYPTED_PASSWORD\::;s:^docker\:[^:]*\::docker\:$CRYPTED_PASSWORD\::" < /etc/shadow  > /etc/shadow.new
+then
+	cat /etc/shadow.new > /etc/shadow # retain the permissions
+	rm -f /etc/shadow.new
+fi
+
+################################################################################
 # RUN SCRIPTS
 ################################################################################
 
