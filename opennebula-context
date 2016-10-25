@@ -209,6 +209,20 @@ for interface in $CONTEXT_INTERFACES; do
 done
 
 ################################################################################
+# SSH KEY
+################################################################################
+
+if test -n "$SSH_PUBLIC_KEY"
+then
+	echo "Setting up SSH public key access."
+	mkdir /root/.ssh /home/docker/.ssh 2>/dev/null
+	echo "$SSH_PUBLIC_KEY" > /root/.ssh/authorized_keys
+	echo "$SSH_PUBLIC_KEY" > /home/docker/.ssh/authorized_keys
+	chown -R docker:staff /home/docker/.ssh
+	chmod g-w /root
+fi
+
+################################################################################
 # RUN SCRIPTS
 ################################################################################
 
