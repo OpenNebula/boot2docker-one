@@ -209,6 +209,59 @@ for interface in $CONTEXT_INTERFACES; do
 done
 
 ################################################################################
+# SSH KEY
+################################################################################
+
+if test -n "$SSH_PUBLIC_KEY"
+then
+	echo "Setting up SSH public key access."
+	mkdir /root/.ssh /home/docker/.ssh 2>/dev/null
+	echo "$SSH_PUBLIC_KEY" > /root/.ssh/authorized_keys
+	echo "$SSH_PUBLIC_KEY" > /home/docker/.ssh/authorized_keys
+	chown -R docker:staff /home/docker/.ssh
+	chmod g-w /root
+fi
+
+################################################################################
+# USER PASSWORD
+################################################################################
+
+echo "Setting up user encrypted password."
+if test -z "$CRYPTED_PASSWORD"
+then
+	# Don't allow the default password at all
+	CRYPTED_PASSWORD='*'
+fi
+
+# Unfortunately, we don't have ed(1) to edit in-place
+# various characters can be in $CRYPTED_PASSWORD, with one
+# exception: a colon is a delimiter in /etc/shadow, so it cannot
+# possibly be included in user's password. Hence the overly-quoted
+# sed expression:
+if sed "s:^root\:[^:]*\::root\:$CRYPTED_PASSWORD\::;s:^docker\:[^:]*\::docker\:$CRYPTED_PASSWORD\::" < /etc/shadow  > /etc/shadow.new
+then
+	cat /etc/shadow.new > /etc/shadow # retain the permissions
+	rm -f /etc/shadow.new
+fi
+
+################################################################################
+# HTTP_PROXY
+################################################################################
+
+if test -n "$HTTP_PROXY"
+then
+	echo "Setting up HTTP proxy and restarting docker."
+	echo "HTTP_PROXY='$HTTP_PROXY'; export HTTP_PROXY" >> /var/lib/boot2docker/profile
+
+	# Docker has already been started, restart it.
+	# Sorry, this is quick and dirty way to do it, feel free to split
+	# contextualization to multiple stages, so that we run late enough
+	# to override user password and network setup, and sooner than docker
+	# is started.
+	/etc/init.d/docker restart
+fi
+
+################################################################################
 # RUN SCRIPTS
 ################################################################################
 
