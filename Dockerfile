@@ -5,5 +5,5 @@ RUN sed -i 's/^MAGIC=.*$/MAGIC=""/' $ROOTFS/etc/rc.d/automount
 
 ADD opennebula-context $ROOTFS/etc/rc.d/opennebula-context
 
-RUN /make_iso.sh
+RUN /tmp/make_iso.sh
 CMD ["cat", "boot2docker.iso"]
